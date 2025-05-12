@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Document Q&A System{% endblock %}</title>
+    
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <!-- Socket.IO -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
+    
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="flex min-h-screen">
+        <!-- Sidebar -->
+        <div class="w-80 bg-white border-r border-gray-200 shadow-sm dark:bg-gray-800 dark:border-gray-700" id="sidebar">
+            {% include 'components/sidebar.html' %}
+        </div>
+        
+        <!-- Main Content -->
+        <div class="flex-1">
+            <!-- Header -->
+            <header class="bg-white shadow-sm dark:bg-gray-800 py-4 px-6 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center justify-between">
+                    <h1 class="text-2xl font-semibold text-gray-800 dark:text-white">Document Q&A System</h1>
+                    
+                    <div class="flex items-center space-x-4">
+                        {% block header_actions %}{% endblock %}
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Main content area -->
+            <main class="px-6 py-4">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <footer class="bg-white shadow-inner dark:bg-gray-800 py-3 px-6 border-t border-gray-200 dark:border-gray-700">
+        <div class="text-center text-gray-500 dark:text-gray-400 text-sm">
+            &copy; {{ current_year }} Document Q&A System
+        </div>
+    </footer>
+
+    <!-- Flash messages -->
+    <div id="flash-messages" class="fixed top-5 right-5 z-50">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-message bg-{{ category if category != 'message' else 'info' }}-100 border-l-4 border-{{ category if category != 'message' else 'info' }}-500 text-{{ category if category != 'message' else 'info' }}-700 p-4 mb-3 rounded shadow-md">
+                        <div class="flex items-center">
+                            <div class="py-1 mr-2">
+                                {% if category == 'success' %}
+                                    <i class="fas fa-check-circle"></i>
+                                {% elif category == 'warning' %}
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                {% elif category == 'error' or category == 'danger' %}
+                                    <i class="fas fa-times-circle"></i>
+                                {% else %}
+                                    <i class="fas fa-info-circle"></i>
+                                {% endif %}
+                            </div>
+                            <div>{{ message }}</div>
+                            <button class="ml-auto close-flash">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+    
+    <!-- Main JavaScript -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="bg-white dark:bg-gray-800 rounded-lg shadow-md h-[calc(100vh-16rem)]">
+    {% include 'components/chat.html' %}
+</div>
+{% endblock %}
+{% block title %}Document Q&A System{% endblock %}
+
+{% block header_actions %}
+<div class="text-sm text-gray-600 dark:text-gray-400">
+    <span class="mr-2">Documents: <span class="font-semibold">{{ document_count }}</span></span>
+    <span>Chunks: <span class="font-semibold">{{ chunk_count }}</span></span>
+</div>
+{% endblock %}
+
+
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Socket.IO setup
+        const socket = io();
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const chatMessages = document.getElementById('chat-messages');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        
+        // File upload handling
+        const fileInput = document.getElementById('file-input');
+        const selectedFiles = document.getElementById('selected-files');
+        const uploadForm = document.getElementById('upload-form');
+        const uploadButton = document.getElementById('upload-button');
+        
+        // Citation format
+        const citationFormatOptions = document.querySelectorAll('input[name="citation-format"]');
+        let citationFormat = 'brief';
+        
+        // Reset button
+        const resetButton = document.getElementById('reset-button');
+        
+        // Handle file selection
+        fileInput.addEventListener('change', function() {
+            selectedFiles.innerHTML = '';
+            
+            if (this.files.length > 0) {
+                for (let i = 0; i < this.files.length; i++) {
+                    const file = this.files[i];
+                    const fileSize = (file.size / 1024).toFixed(2);
+                    
+                    const fileElement = document.createElement('div');
+                    fileElement.className = 'text-sm text-gray-700 dark:text-gray-300 mt-1 flex items-center';
+                    fileElement.innerHTML = `
+                        <i class="fas fa-file-pdf text-red-500 mr-1"></i>
+                        <span class="truncate">${file.name}</span>
+                        <span class="ml-1">(${fileSize} KB)</span>
+                    `;
+                    
+                    selectedFiles.appendChild(fileElement);
+                }
+            } else {
+                selectedFiles.innerHTML = '<div class="text-sm text-gray-500 italic">No files selected</div>';
+            }
+        });
+        
+        // Handle citation format selection
+        citationFormatOptions.forEach(option => {
+            option.addEventListener('change', function() {
+                citationFormat = this.value;
+            });
+        });
+        
+        // Handle form submission
+        if (chatForm) {
+            chatForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const message = chatInput.value.trim();
+                if (message) {
+                    // Add user message to UI
+                    appendMessage('user', message);
+                    
+                    // Clear input
+                    chatInput.value = '';
+                    
+                    // Show loading indicator
+                    loadingIndicator.classList.remove('hidden');
+                    
+                    // Send message to server
+                    socket.emit('send_message', {
+                        message: message,
+                        citation_format: citationFormat
+                    });
+                }
+            });
+        }
+        
+        // Handle incoming messages
+        socket.on('receive_message', function(data) {
+            // Hide loading indicator
+            loadingIndicator.classList.add('hidden');
+            
+            // Add message to UI
+            appendMessage('assistant', data.answer, data.citations);
+        });
+        
+        // Handle reset button
+        if (resetButton) {
+            resetButton.addEventListener('click', function() {
+                if (confirm('Are you sure you want to reset? This will clear all uploaded documents and chat history.')) {
+                    window.location.href = '/reset';
+                }
+            });
+        }
+        
+        // Function to append a message to the chat
+        function appendMessage(role, content, citations = []) {
+            const messageContainer = document.createElement('div');
+            messageContainer.className = `message-container ${role === 'user' ? 'flex justify-end' : ''}`;
+            
+            const messageElement = document.createElement('div');
+            messageElement.className = `max-w-[75%] p-3 rounded-lg ${role === 'user' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`;
+            
+            if (role === 'assistant') {
+                const contentElement = document.createElement('div');
+                contentElement.className = 'markdown-content';
+                contentElement.innerHTML = content;
+                messageElement.appendChild(contentElement);
+                
+                if (citations && citations.length > 0) {
+                    const citationContainer = document.createElement('div');
+                    citationContainer.className = 'mt-3 pt-2 border-t border-gray-300';
+                    
+                    const citationTitle = document.createElement('p');
+                    citationTitle.className = 'font-semibold text-gray-700';
+                    citationTitle.textContent = 'Sources:';
+                    citationContainer.appendChild(citationTitle);
+                    
+                    const citationList = document.createElement('ul');
+                    citationList.className = 'list-disc pl-5 text-sm text-gray-600';
+                    
+                    citations.forEach(citation => {
+                        const citationItem = document.createElement('li');
+                        citationItem.innerHTML = citation.text;
+                        citationList.appendChild(citationItem);
+                    });
+                    
+                    citationContainer.appendChild(citationList);
+                    messageElement.appendChild(citationContainer);
+                }
+            } else {
+                const contentElement = document.createElement('p');
+                contentElement.textContent = content;
+                messageElement.appendChild(contentElement);
+            }
+            
+            const timestamp = document.createElement('div');
+            timestamp.className = 'text-xs text-gray-500 mt-1 text-right';
+            
+            const now = new Date();
+            timestamp.textContent = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            
+            messageElement.appendChild(timestamp);
+            messageContainer.appendChild(messageElement);
+            
+            chatMessages.appendChild(messageContainer);
+            
+            // Scroll to bottom
+            chatMessages, chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Remove empty message placeholder if it exists
+            const placeholder = chatMessages.querySelector('.flex.h-full.items-center.justify-center');
+            if (placeholder) {
+                placeholder.remove();
+            }
+        }
+    });
+</script>
+{% endblock %}
